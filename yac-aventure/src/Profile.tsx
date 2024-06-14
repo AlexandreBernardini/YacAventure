@@ -1,127 +1,62 @@
-import { Text, View, Button, Alert, TextInput } from 'react-native';
-import React from 'react';
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Text, View, StyleSheet, Button, Alert } from 'react-native';
 import axios from 'axios';
-import { useNavigation } from '@react-navigation/native';
 
-const Profile: React.FC = () => {
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [age, setAge] = useState('');
-    const [password, setPassword] = useState('');
-    const navigation = useNavigation();
-  
-    const handleSignUp = async () => {
-      try {
-        // Validation des champs
-        if (!firstName || !lastName || !age || !password) {
-          Alert.alert('Erreur', 'Veuillez remplir tous les champs');
-          return;
+export default function Profile({ route, navigation }) {
+    const { token } = route.params; // On récupère le token à partir des paramètres de la route
+    const [userData, setUserData] = useState(null);
+
+    useEffect(() => {
+        fetchUserProfile();
+    }, []);
+
+    const fetchUserProfile = async () => {
+        try {
+            const response = await axios.get('http://192.168.1.20:3001/utilisateur', {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+            setUserData(response.data);
+        } catch (error) {
+            console.error('Erreur lors de la récupération des données du profil :', error);
+            Alert.alert('Erreur', 'Une erreur est survenue lors de la récupération des données du profil');
         }
-            
-        // Envoi des données d'inscription au backend
-        const response = await axios.post('http://192.168.1.20:3000/inscription', {
-          prenom: firstName as string,
-          nom: lastName as string,
-          age: parseInt(age),
-          mot_de_passe: password as string,
-        });
-    
-        console.log(response.data.message);
-        // Réinitialisation des champs après inscription réussie
-        setFirstName('');
-        setLastName('');
-        setAge('');
-        setPassword('');
-    
-        // Autres actions après l'inscription
-      } catch (error) {
-        console.error('Erreur lors de l\'inscription :', error);
-        Alert.alert('Erreur', 'Une erreur est survenue lors de l\'inscription');
-      }
     };
 
-    const handleSignIn = async () => {
-      try {
-        // Validation des champs
-        if (!firstName || !lastName || !password) {
-          Alert.alert('Erreur', 'Veuillez remplir tous les champs');
-          return;
-        }
-  
-        // Envoi des données de connexion au backend
-        const response = await axios.post('http://192.168.1.20:3000/connexion', {
-          prenom: firstName,
-          nom: lastName,
-          mot_de_passe: password,
-        });
+    if (!userData) {
+        return (
+            <View style={styles.container}>
+                <Text>Chargement...</Text>
+            </View>
+        );
+    }
 
-        if (response.data.success) {
-          // Si la connexion réussit, naviguer vers la page d'accueil
-          navigation.navigate('Accueil', { firstName, lastName });
-        } else {
-          Alert.alert('Erreur', 'Nom, prénom ou mot de passe incorrect');
-        }
-      } catch (error) {
-        console.error('Erreur lors de la connexion :', error);
-        Alert.alert('Erreur', 'Une erreur est survenue lors de la connexion');
-      }
-    };
-  
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <TextInput
-          placeholder="Prénom"
-          value={firstName}
-          onChangeText={setFirstName}
-          style={{ marginBottom: 10 }}
-        />
-        <TextInput
-          placeholder="Nom"
-          value={lastName}
-          onChangeText={setLastName}
-          style={{ marginBottom: 10 }}
-        />
-        <TextInput
-          placeholder="Âge"
-          value={age}
-          onChangeText={setAge}
-          keyboardType="numeric"
-          style={{ marginBottom: 10 }}
-        />
-        <TextInput
-          placeholder="Mot de passe"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          style={{ marginBottom: 10 }}
-        />
-        <Button title="S'inscrire" onPress={handleSignUp} />
-        
-      <View>
-        <TextInput
-          placeholder="Prénom"
-          value={firstName}
-          onChangeText={setFirstName}
-          style={{ marginBottom: 10 }}
-        />
-        <TextInput
-          placeholder="Nom"
-          value={lastName}
-          onChangeText={setLastName}
-          style={{ marginBottom: 10 }}
-        />
-        <TextInput
-          placeholder="Mot de passe"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          style={{ marginBottom: 10 }}
-        />
-        <Button title="Se connecter" onPress={handleSignIn} />
-      </View>
-      </View>
+        <View style={styles.container}>
+            <Text style={styles.label}>Prénom: <Text style={styles.value}>{userData.prenom}</Text></Text>
+            <Text style={styles.label}>Nom: <Text style={styles.value}>{userData.nom}</Text></Text>
+            <Text style={styles.label}>Email: <Text style={styles.value}>{userData.email}</Text></Text>
+            <Text style={styles.label}>Pseudo: <Text style={styles.value}>{userData.pseudo}</Text></Text>
+            <Text style={styles.label}>Âge: <Text style={styles.value}>{userData.age}</Text></Text>
+            <Button title="Retour à l'accueil" onPress={() => navigation.navigate('Accueil', { token })} />
+        </View>
     );
-  };
+}
 
-  export default Profile;
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    label: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    value: {
+        fontWeight: 'normal',
+    },
+});
