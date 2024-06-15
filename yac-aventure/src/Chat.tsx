@@ -14,7 +14,7 @@ export default function Chat({ route }) {
 
   const fetchMessages = async () => {
     try {
-      const response = await axios.get('http://192.168.1.20:3001/messages', {
+      const response = await axios.get('http://192.168.1.20:4280/messages', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -39,7 +39,7 @@ export default function Chat({ route }) {
   const sendMessageToServer = async (message) => {
     try {
       await axios.post(
-        'http://192.168.1.20:3001/messages',
+        'http://192.168.1.20:4280/messages',
         {
           text: message.text,
           userId,

@@ -1,8 +1,9 @@
-import { Text, View, Button, Alert, TextInput, StyleSheet, Image } from 'react-native';
+import { Text, View, Alert, TextInput, Image, TouchableOpacity } from 'react-native';
 import React from 'react';
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
+import tw from 'twrnc';
 
 const Login: React.FC = () => {
   const [firstName, setFirstName] = useState('');
@@ -16,32 +17,28 @@ const Login: React.FC = () => {
 
   const handleSignUp = async () => {
     try {
-      // Validation des champs
       if (!firstName || !lastName || !age || !password || !email || !pseudo) {
         Alert.alert('Erreur', 'Veuillez remplir tous les champs');
         return;
       }
 
-      // Envoi des données d'inscription au backend
-      const response = await axios.post('http://192.168.1.20:3001/inscription', {
-        prenom: firstName as string,
-        nom: lastName as string,
-        mot_de_passe: password as string,
-        email: email as string,
-        pseudo: pseudo as string,
+      const response = await axios.post('http://192.168.1.20:4280/inscription', {
+        prenom: firstName,
+        nom: lastName,
+        mot_de_passe: password,
+        email,
+        pseudo,
         age: parseInt(age)
       });
 
       console.log(response.data.message);
-      // Réinitialisation des champs après inscription réussie
+
       setFirstName('');
       setLastName('');
       setAge('');
       setEmail('');
       setPseudo('');
       setPassword('');
-
-      // Autres actions après l'inscription
     } catch (error) {
       console.error('Erreur lors de l\'inscription :', error);
       Alert.alert('Erreur', 'Une erreur est survenue lors de l\'inscription');
@@ -49,35 +46,31 @@ const Login: React.FC = () => {
   };
 
   const handleSignIn = async () => {
-  try {
-    // Validation des champs
-    if (!pseudo || !password) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
-      return;
-    }
+    try {
+      if (!pseudo || !password) {
+        Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+        return;
+      }
 
-    // Envoi des données de connexion au backend
-    const response = await axios.post('http://192.168.1.20:3001/connexion', {
-      pseudo: pseudo as string,
-      mot_de_passe: password as string,
-    });
+      const response = await axios.post('http://192.168.1.20:4280/connexion', {
+        pseudo,
+        mot_de_passe: password,
+      });
 
-    if (response.data.success) {
-      // Si la connexion réussit, naviguer vers la page d'accueil avec le token
-      const token = response.data.token; // Assurez-vous de récupérer le token de la réponse
-      navigation.navigate('Accueil', { token });
-    } else {
-      Alert.alert('Erreur', 'Pseudo ou mot de passe incorrect');
+      if (response.data.success) {
+        const token = response.data.token;
+        navigation.navigate('Accueil', { token });
+      } else {
+        Alert.alert('Erreur', 'Pseudo ou mot de passe incorrect');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la connexion :', error);
+      Alert.alert('Erreur', 'Une erreur est survenue lors de la connexion');
     }
-  } catch (error) {
-    console.error('Erreur lors de la connexion :', error);
-    Alert.alert('Erreur', 'Une erreur est survenue lors de la connexion');
-  }
-};
+  };
 
   const toggleForm = () => {
-    setIsSigningUp(!isSigningUp); // Inverser l'état de l'inscription/connexion
-    // Réinitialiser les champs lorsque vous basculez entre les formulaires
+    setIsSigningUp(!isSigningUp);
     setFirstName('');
     setLastName('');
     setAge('');
@@ -87,107 +80,101 @@ const Login: React.FC = () => {
   };
 
   return (
-    <View>
-    <View style={styles.container}>
-      <Text style={styles.title}>Bienvenue à Yac Aventure!</Text>
-      <Text style={styles.subtitle}>Commencez par vous {isSigningUp ? 'inscrire' : 'connecter'}</Text>
+    <View style={tw`flex-1 w-full justify-center bg-blue-900`}>
+      <View style={tw`items-center justify-center mt-8`}>
+        <Text style={tw`text-2xl font-bold text-white`}>Bienvenue à Yac Aventure!</Text>
+        <Text style={tw`text-lg text-white`}>Commencez par vous {isSigningUp ? 'inscrire' : 'connecter'}</Text>
+      </View>
+      {isSigningUp && (
+        <>
+          <TextInput
+            placeholder="Prénom"
+            value={firstName}
+            onChangeText={setFirstName}
+            style={tw`h-10 border-2 border-black rounded-lg bg-white text-black w-11/12 mx-4 my-2 px-3`}
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            placeholder="Nom"
+            value={lastName}
+            onChangeText={setLastName}
+            style={tw`h-10 border-2 border-black rounded-lg bg-white text-black w-11/12 mx-4 my-2 px-3`}
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            style={tw`h-10 border-2 border-black rounded-lg bg-white text-black w-11/12 mx-4 my-2 px-3`}
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            placeholder="Pseudo"
+            value={pseudo}
+            onChangeText={setPseudo}
+            style={tw`h-10 border-2 border-black rounded-lg bg-white text-black w-11/12 mx-4 my-2 px-3`}
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            placeholder="Mot de passe"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            style={tw`h-10 border-2 border-black rounded-lg bg-white text-black w-11/12 mx-4 my-2 px-3`}
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            placeholder="Âge"
+            value={age}
+            onChangeText={setAge}
+            keyboardType="numeric"
+            style={tw`h-10 border-2 border-black rounded-lg bg-white text-black w-11/12 mx-4 my-2 px-3`}
+            placeholderTextColor="#aaa"
+          />
+          <TouchableOpacity
+            style={tw`items-center justify-center bg-green-500 p-3 rounded-lg w-11/12 mx-4 mt-4`}
+            onPress={handleSignUp}
+          >
+            <Text style={tw`text-white text-lg`}>S'inscrire</Text>
+          </TouchableOpacity>
+        </>
+      )}
+      {!isSigningUp && (
+        <>
+          <TextInput
+            placeholder="Pseudo"
+            value={pseudo}
+            onChangeText={setPseudo}
+            style={tw`h-10 border-2 border-black rounded-lg bg-white text-black w-11/12 mx-4 my-2 px-3`}
+            placeholderTextColor="#aaa"
+          />
+          <TextInput
+            placeholder="Mot de passe"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            style={tw`h-10 border-2 border-black rounded-lg bg-white text-black w-11/12 mx-4 my-2 px-3`}
+            placeholderTextColor="#aaa"
+          />
+          <TouchableOpacity
+            style={tw`items-center justify-center bg-green-500 p-3 rounded-lg w-11/12 mx-4 mt-4`}
+            onPress={handleSignIn}
+          >
+            <Text style={tw`text-white text-lg`}>Se connecter</Text>
+          </TouchableOpacity>
+        </>
+      )}
+      <TouchableOpacity
+        style={tw`items-center justify-center bg-blue-500 p-3 rounded-lg w-11/12 mx-4 mt-4`}
+        onPress={toggleForm}
+      >
+        <Text style={tw`text-white text-lg`}>{isSigningUp ? "Se connecter" : "S'inscrire"}</Text>
+      </TouchableOpacity>
+      <View style={tw`items-center justify-center mt-4`}>
+        <Image source={require('../image/logo-yacavantures.png')} style={tw`w-32 h-32`} />
+      </View>
     </View>
-    {isSigningUp && (
-      <>
-        <TextInput
-          placeholder="Prénom"
-          value={firstName}
-          onChangeText={setFirstName}
-          style={styles.TextInput}
-        />
-        <TextInput
-          placeholder="Nom"
-          value={lastName}
-          onChangeText={setLastName}
-          style={styles.TextInput}
-        />
-        <TextInput
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          style={styles.TextInput}
-        />
-        <TextInput
-          placeholder="Pseudo"
-          value={pseudo}
-          onChangeText={setPseudo}
-          style={styles.TextInput}
-        />
-        <TextInput
-          placeholder="Mot de passe"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          style={styles.TextInput}
-        />
-        <TextInput
-          placeholder="Âge"
-          value={age}
-          onChangeText={setAge}
-          keyboardType="numeric"
-          style={styles.TextInput}
-        />
-        <Button title="S'inscrire" onPress={handleSignUp} />
-      </>
-    )}
-    {!isSigningUp && (
-      <>
-        <TextInput
-          placeholder="Pseudo"
-          value={pseudo}
-          onChangeText={setPseudo}
-          style={styles.TextInput}
-        />
-        <TextInput
-          placeholder="Mot de passe"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          style={styles.TextInput}
-        />
-        <Button title="Se connecter" onPress={handleSignIn} />
-      </>
-    )}
-    <View style={styles.Button}>
-    <Button title={isSigningUp ? "Se connecter" : "S'inscrire"} onPress={toggleForm} />
-    </View>      
-  <Image source={require('../image/logo-yacavantures.png')} style={styles.image} />
-  </View>
   );
 };
-const styles = StyleSheet.create({
-  image: {
-      marginLeft: 25,
-      marginTop: 10,
-  },
-  container: {
-      backgroundColor: '#fff',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginTop: 30,
-  },
-  title: {
-      fontSize: 24,
-      fontWeight: 'bold',
-  },
-  subtitle: {
-      fontSize: 18,
-      color: 'gray',
-  },
-  TextInput: {
-    height: 40,
-    borderColor: 'blue',
-    borderWidth: 2,
-    margin: 10,
-    padding: 10,
-  },
-  Button: {
-    marginTop: 10,
-  },
-  });
+
 export default Login;

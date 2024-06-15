@@ -4,7 +4,9 @@ import mysql from 'mysql';
 import bodyParser from 'body-parser';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import multer from 'multer';
 import cors from 'cors';
+import path from 'path';
 
 // Charger les variables d'environnement
 dotenv.config();
@@ -39,7 +41,51 @@ app.use(bodyParser.json());
 // Interface étendue pour inclure user
 interface CustomRequest extends Request {
   user?: string;
+  userId?: number;
 }
+
+//#region Multer
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req: express.Request, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+});
+
+const upload = multer({ storage });
+
+app.post('/uploadProfileImage', upload.single('profileImage'), (req, res) => {
+  const file = req.file;
+  const userId = req.body.userId;
+
+  if (!file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
+
+  const imageUrl = `/uploads/${file.filename}`;
+
+  const sql = 'UPDATE utilisateurs SET profile_image = ? WHERE id = ?';
+  db.query(sql, [imageUrl, userId], (err, result) => {
+    if (err) {
+      console.error('Erreur lors de la mise à jour de l\'image de profil :', err);
+      res.status(500).json({ error: 'Erreur lors de la mise à jour de l\'image de profil' });
+      return;
+    }
+    res.status(200).json({ message: 'Image de profil mise à jour avec succès', imageUrl });
+  });
+});
+
+// Serve static files from the uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.listen(port, () => {
+  console.log(`Serveur backend démarré sur le port ${port}`);
+});
+//#endregion
+
 
 // Middleware pour vérifier le token JWT
 const verifyToken = (req: CustomRequest, res: Response, next: NextFunction) => {
@@ -103,8 +149,23 @@ app.post('/inscription', (req, res) => {
 ///////////////////////////
 app.get('/pseudo', verifyToken, (req: CustomRequest, res: Response) => {
   const pseudo = req.user;
-  res.status(200).json({ pseudo });
+  const sql = 'SELECT id, pseudo FROM utilisateurs WHERE pseudo = ?';
+  db.query(sql, [pseudo], (err, results) => {
+    if (err) {
+      console.error('Erreur lors de la récupération du pseudo :', err);
+      res.status(500).json({ error: 'Une erreur est survenue lors de la récupération du pseudo' });
+      return;
+    }
+    if (results.length > 0) {
+      const user = results[0];
+      res.status(200).json({ pseudo: user.pseudo, userId: user.id });
+    } else {
+      res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+  });
 });
+
+  
 
 ////////////////////////////
 //  POST /connexion       //
@@ -153,18 +214,66 @@ app.get('/utilisateur', verifyToken, (req: CustomRequest, res: Response) => {
   });
 });
 
-// Exemple pour la route /ajouterAmi
+// Route pour ajouter un ami
 app.post('/ajouterAmi', verifyToken, (req: CustomRequest, res: Response) => {
     const { userId, userIdDemandeur } = req.body;
     // Logique pour ajouter un ami
+    res.status(200).json({ message: 'Ami ajouté avec succès' });
+});
+
+// Route pour récupérer les demandes d'amis reçues
+app.get('/demandesAmis', verifyToken, (req, res) => {
+  const utilisateur_receveur_id = req.query.utilisateur_receveur_id;
+
+  // Sélectionner les demandes d'amis reçues
+  const sql = 'SELECT da.id, u.prenom, u.nom FROM demande_amis da JOIN utilisateurs u ON da.utilisateur_demandeur_id = u.id WHERE da.utilisateur_receveur_id = ? AND da.etat = "en_attente"';
+  db.query(sql, [utilisateur_receveur_id], (err, results) => {
+    if (err) {
+      console.error('Erreur lors de la récupération des demandes d\'amis :', err);
+      res.status(500).json({ error: 'Une erreur est survenue lors de la récupération des demandes d\'amis' });
+      return;
+    }
+    res.status(200).json(results);
+  });
+});
+
+  
+  // Route pour accepter une demande d'ami
+  app.post('/accepterAmi', verifyToken, (req, res) => {
+    const { requestId } = req.body;
+  
+    // Logique pour accepter la demande d'ami (mise à jour de l'état)
+    const sql = 'UPDATE demande_amis SET etat = "acceptee" WHERE id = ?';
+    db.query(sql, [requestId], (err) => {
+      if (err) {
+        console.error('Erreur lors de l\'acceptation de la demande d\'ami :', err);
+        res.status(500).json({ error: 'Une erreur est survenue lors de l\'acceptation de la demande d\'ami' });
+        return;
+      }
+      res.status(200).json({ message: 'Demande d\'ami acceptée avec succès' });
+    });
   });
   
-  // Exemple pour la route /demandeAmi
-  app.post('/demandeAmi', verifyToken, (req, res) => {
-    const { utilisateur_demandeur_id, utilisateur_receveur_id, etat } = req.body;
-    // Logique pour enregistrer la demande d'ami
+  
+  // Route pour rejeter une demande d'ami
+  app.post('/rejeterAmi', verifyToken, (req, res) => {
+    const { requestId } = req.body;
+  
+    // Logique pour rejeter la demande d'ami (mise à jour de l'état)
+    const sql = 'UPDATE demande_amis SET etat = "rejettee" WHERE id = ?';
+    db.query(sql, [requestId], (err) => {
+      if (err) {
+        console.error('Erreur lors du rejet de la demande d\'ami :', err);
+        res.status(500).json({ error: 'Une erreur est survenue lors du rejet de la demande d\'ami' });
+        return;
+      }
+      res.status(200).json({ message: 'Demande d\'ami rejetée avec succès' });
+    });
   });
   
+  
+
+
   // Exemple pour la route /incrementerNotification
   app.post('/incrementerNotification', verifyToken, (req, res) => {
     const { userId } = req.body;
@@ -185,6 +294,28 @@ app.get('/messages', verifyToken, (req, res) => {
       res.status(200).json(results);
     });
   });
+
+  // Route pour récupérer les amis
+app.get('/amis', verifyToken, (req, res) => {
+  const utilisateur_id = req.query.utilisateur_id;
+
+  const sql = `
+    SELECT u.id, u.prenom, u.nom
+    FROM utilisateurs u
+    JOIN demande_amis da ON (u.id = da.utilisateur_demandeur_id OR u.id = da.utilisateur_receveur_id)
+    WHERE (da.utilisateur_demandeur_id = ? OR da.utilisateur_receveur_id = ?) AND da.etat = 'acceptee' AND u.id != ?
+  `;
+
+  db.query(sql, [utilisateur_id, utilisateur_id, utilisateur_id], (err, results) => {
+    if (err) {
+      console.error('Erreur lors de la récupération des amis :', err);
+      res.status(500).json({ error: 'Une erreur est survenue lors de la récupération des amis' });
+      return;
+    }
+    res.status(200).json(results);
+  });
+});
+
   
   // Ajouter une nouvelle route pour envoyer des messages
   app.post('/messages', verifyToken, (req, res) => {
@@ -208,7 +339,7 @@ app.post('/demandeAmi', verifyToken, (req, res) => {
   const { utilisateur_demandeur_id, utilisateur_receveur_id, etat } = req.body;
 
   // Vérifier si la demande d'amitié existe déjà
-  const sqlCheckFriendshipRequest = 'SELECT COUNT(*) AS count FROM demandes_amis WHERE utilisateur_demandeur_id = ? AND utilisateur_receveur_id = ?';
+  const sqlCheckFriendshipRequest = 'SELECT COUNT(*) AS count FROM demande_amis WHERE utilisateur_demandeur_id = ? AND utilisateur_receveur_id = ?';
   db.query(sqlCheckFriendshipRequest, [utilisateur_demandeur_id, utilisateur_receveur_id], (err, results) => {
     if (err) {
       console.error('Erreur lors de la vérification de l\'existence de la demande d\'ami :', err);
@@ -223,7 +354,7 @@ app.post('/demandeAmi', verifyToken, (req, res) => {
     }
 
     // Enregistrer la demande d'amitié dans la base de données
-    const sqlAddFriendshipRequest = 'INSERT INTO demandes_amis (utilisateur_demandeur_id, utilisateur_receveur_id, etat) VALUES (?, ?, ?)';
+    const sqlAddFriendshipRequest = 'INSERT INTO demande_amis (utilisateur_demandeur_id, utilisateur_receveur_id, etat) VALUES (?, ?, ?)';
     db.query(sqlAddFriendshipRequest, [utilisateur_demandeur_id, utilisateur_receveur_id, etat], (err) => {
       if (err) {
         console.error('Erreur lors de l\'enregistrement de la demande d\'ami :', err);
@@ -234,6 +365,7 @@ app.post('/demandeAmi', verifyToken, (req, res) => {
     });
   });
 });
+
 
 ////////////////////////////
 //  POST /incrementerNotification //
